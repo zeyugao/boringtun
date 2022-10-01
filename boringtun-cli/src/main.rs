@@ -82,6 +82,10 @@ fn main() {
             Arg::new("disable-multi-queue")
                 .long("disable-multi-queue")
                 .help("Disable using multiple queues for the tunnel interface"),
+            Arg::new("client-id")
+                .long("client-id")
+                .takes_value(true)
+                .default_value("0,0,0"),
         ])
         .get_matches();
 
@@ -95,6 +99,15 @@ fn main() {
     }
     let n_threads: usize = matches.value_of_t("threads").unwrap_or_else(|e| e.exit());
     let log_level: Level = matches.value_of_t("verbosity").unwrap_or_else(|e| e.exit());
+
+    let client_id: [u8; 3] = matches
+        .value_of("client-id")
+        .unwrap()
+        .split(',')
+        .map(|s| s.parse().unwrap())
+        .collect::<Vec<u8>>()
+        .try_into()
+        .unwrap();
 
     // Create a socketpair to communicate between forked processes
     let (sock1, sock2) = UnixDatagram::pair().unwrap();
@@ -151,6 +164,7 @@ fn main() {
         use_connected_socket: !matches.is_present("disable-connected-udp"),
         #[cfg(target_os = "linux")]
         use_multi_queue: !matches.is_present("disable-multi-queue"),
+        client_id,
     };
 
     let mut device_handle: DeviceHandle = match DeviceHandle::new(tun_name, config) {

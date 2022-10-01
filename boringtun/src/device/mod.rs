@@ -101,6 +101,7 @@ pub struct DeviceConfig {
     pub use_multi_queue: bool,
     #[cfg(target_os = "linux")]
     pub uapi_fd: i32,
+    pub client_id: [u8; 3],
 }
 
 impl Default for DeviceConfig {
@@ -112,6 +113,7 @@ impl Default for DeviceConfig {
             use_multi_queue: true,
             #[cfg(target_os = "linux")]
             uapi_fd: -1,
+            client_id: [0; 3],
         }
     }
 }
@@ -415,7 +417,7 @@ impl Device {
 
         // Then open new sockets and bind to the port
         let udp_sock4 = Arc::new(
-            UDPSocket::new()?
+            UDPSocket::new(self.config.client_id)?
                 .set_non_blocking()?
                 .set_reuse()?
                 .bind(port)?,
@@ -427,7 +429,7 @@ impl Device {
         }
 
         let udp_sock6 = Arc::new(
-            UDPSocket::new6()?
+            UDPSocket::new6(self.config.client_id)?
                 .set_non_blocking()?
                 .set_reuse()?
                 .bind(port)?,
@@ -595,6 +597,7 @@ impl Device {
     }
 
     fn register_udp_handler(&self, udp: Arc<UDPSocket>) -> Result<(), Error> {
+        let client_id = self.config.client_id;
         self.queue.new_event(
             udp.as_raw_fd(),
             Box::new(move |d, t| {
@@ -675,7 +678,7 @@ impl Device {
                     let ip_addr = addr.ip();
                     p.set_endpoint(addr);
                     if d.config.use_connected_socket {
-                        if let Ok(sock) = p.connect_endpoint(d.listen_port, d.fwmark) {
+                        if let Ok(sock) = p.connect_endpoint(d.listen_port, d.fwmark, client_id) {
                             d.register_conn_handler(Arc::clone(peer), sock, ip_addr)
                                 .unwrap();
                         }

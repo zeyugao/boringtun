@@ -107,6 +107,7 @@ impl Peer {
         &self,
         port: u16,
         fwmark: Option<u32>,
+        client_id: [u8; 3],
     ) -> Result<Arc<UDPSocket>, Error> {
         let mut endpoint = self.endpoint.write();
 
@@ -115,12 +116,12 @@ impl Peer {
         }
 
         let udp_conn = Arc::new(match endpoint.addr {
-            Some(addr @ SocketAddr::V4(_)) => UDPSocket::new()?
+            Some(addr @ SocketAddr::V4(_)) => UDPSocket::new(client_id)?
                 .set_non_blocking()?
                 .set_reuse()?
                 .bind(port)?
                 .connect(&addr)?,
-            Some(addr @ SocketAddr::V6(_)) => UDPSocket::new6()?
+            Some(addr @ SocketAddr::V6(_)) => UDPSocket::new6(client_id)?
                 .set_non_blocking()?
                 .set_reuse()?
                 .bind(port)?
